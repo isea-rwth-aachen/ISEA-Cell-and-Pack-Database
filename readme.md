@@ -1,7 +1,8 @@
 
 <div align=right>
-<a href="http://www.isea.rwth-aachen.de/">  <img src="misc/images/logo_isea.png" width="500" /> </a>
-</div>
+<a href="https://www.carl.rwth-aachen.de/?lidx=1" target="_blank">
+    <img src="Misc/CARL_ISEA_Logo.svg" align="right" alt="CARL Logo"  height="80"/>
+</a>
 
 About ICPD
 ==============================
