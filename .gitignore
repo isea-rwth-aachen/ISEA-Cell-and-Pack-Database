@@ -1,0 +1,11 @@
+*.fig
+*.emf
+*.bmp
+*.vtp
+*.vtm
+*.asv
+
+Databases/*
+!Databases/DatabaseTempData/
+!Databases/icpd_publication_data/
+
