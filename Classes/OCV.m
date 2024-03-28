@@ -31,6 +31,19 @@ classdef OCV
                 OpenCircuitPotentialLith = OpenCircuitPotential;
                 OccupancyRateLith = OccupancyRate;
             end
+			
+			if size(OpenCircuitPotential,1) > size(OpenCircuitPotential,2)
+                OpenCircuitPotential    = OpenCircuitPotential';
+            end
+            if size(OccupancyRate,1) > size(OccupancyRate,2)
+                OccupancyRate           = OccupancyRate';
+            end
+            if size(OpenCircuitPotentialLith,1) > size(OpenCircuitPotentialLith,2)
+                OpenCircuitPotentialLith= OpenCircuitPotentialLith';
+            end
+            if size(OccupancyRateLith,1) > size(OccupancyRateLith,2)
+                OccupancyRateLith       = OccupancyRateLith';
+            end
 
             [OccupancyRate, ind] = unique(OccupancyRate);
             OpenCircuitPotential = OpenCircuitPotential(ind);
@@ -82,6 +95,12 @@ classdef OCV
 
             obj.NominalOpenCircuitPotential=trapz(obj.OccupancyRate, obj.OpenCircuitPotential)/(obj.MaxOccupancyRate-obj.MinOccupancyRate);
             obj.NominalOpenCircuitPotentialLith=trapz(obj.OccupancyRate, obj.OpenCircuitPotentialLith)/(obj.MaxOccupancyRate-obj.MinOccupancyRate);
+        end
+		% overload compare operator
+		function logical = eq(A,B) 
+           name_A           = GetProperty(A,'Name');
+           name_B           = arrayfun(@(x) convertStringsToChars(GetProperty(B(x),'Name')),(1:numel(B)),'UniformOutput', false);
+           logical          = strcmp(name_A,name_B);
         end
     end
     %% Public Methods

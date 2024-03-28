@@ -16,4 +16,3 @@ classdef ConductiveAdditive < Material
         end
     end
 end
-

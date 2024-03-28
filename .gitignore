@@ -1,11 +1,10 @@
-*.fig
-*.emf
-*.bmp
-*.vtp
-*.vtm
+*.pdf
 *.asv
+*.json
 
-Databases/*
-!Databases/DatabaseTempData/
-!Databases/icpd_publication_data/
+\Databases
+\export\*
+eport/batteryID/*.xml
+
+
 

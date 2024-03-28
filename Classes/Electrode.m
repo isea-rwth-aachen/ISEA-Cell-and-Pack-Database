@@ -1,6 +1,7 @@
 classdef Electrode
-    %     for active_material [length,width,height,length,width,height]
-    %     due to two sides if only one side is coated [length,width,height,0,0,0]
+%     for active_material [length,width,height,length,width,height]
+%     due to two sides if only one side is coated [length,width,height,0,0,0]
+
     properties
         Name string
         CurrentCollector CurrentCollector
@@ -37,6 +38,9 @@ classdef Electrode
             if exist('opt_SurfaceCapacity', 'var') %Set initial value if coating thickness has to be calculated
                 CoatingDimensions(1, 3)=0.1;
                 CoatingDimensions(2, 3)=0.1;
+            end
+			if exist('TerminalResistance','var')
+                obj.TerminalResistance = TerminalResistance;
             end
             obj.Name = Name;
             obj.CurrentCollector = CurrentCollector;
@@ -86,6 +90,12 @@ classdef Electrode
             obj = CalcTortuosity(obj);
             obj = CalcListOfElements(obj);
             obj = CalcListOfSubstances(obj);
+        end
+		% overload compare operator
+		function logical = eq(A,B) 
+           name_A           = GetProperty(A,'Name');
+           name_B           = arrayfun(@(x) convertStringsToChars(GetProperty(B(x),'Name')),(1:numel(B)),'UniformOutput', false);
+           logical          = strcmp(name_A,name_B);
         end
 
     end

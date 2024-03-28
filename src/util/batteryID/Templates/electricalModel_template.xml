@@ -1,0 +1,67 @@
+<ISEA_R_OCV>
+	<Configuration>
+		<MetaData>
+			<electrical>
+				<Date>Default</Date>
+				<Creator>ISEA</Creator>
+				<CellName>Default</CellName>
+				<ModelName>ISEA_R_OCV</ModelName>
+			</electrical>			
+		</MetaData>				
+		<CustomDefinitions>
+			<MyOhmicResistanceser class="OhmicResistance">
+				<Object class="LookupObj2dWithState">
+					<RowState cacheref="Soc"/>
+					<ColState cacheref="ThermalState"/>
+					<LookupData>
+0.02, 0.02, 0.02;
+0.02, 0.02, 0.02
+					</LookupData>
+					<MeasurementPointsRow desc="StateOfCharge">
+0, 50, 100
+					</MeasurementPointsRow>
+					<MeasurementPointsColumn desc="ThermalState">
+25, 40
+					</MeasurementPointsColumn>
+				</Object>
+			</MyOhmicResistanceser>
+			<MyOCV class="VoltageSource">
+				<Object class="LookupObj2dWithState">
+					<RowState cacheref="Soc"/>
+					<ColState cacheref="ThermalState"/>
+					<LookupData>
+3, 3.5, 4;
+3, 3.5, 4
+					</LookupData>
+					<MeasurementPointsRow desc="StateOfCharge">
+0, 50, 100
+					</MeasurementPointsRow>
+					<MeasurementPointsColumn desc="ThermalState">
+25, 40
+					</MeasurementPointsColumn>
+				</Object>
+			</MyOCV>			
+			<MyR2RC class="CellElement" observable="True">
+				<Children>
+					<OhmicResistance ref="MyOhmicResistanceser"/>
+					<VoltageSource ref="MyOCV"/>
+				</Children>
+				<Soc cache="True" class="Soc">
+					<InitialCapacity>Default</InitialCapacity>
+					<InitialSoc>50</InitialSoc>
+					<MeasurementPoints>
+0, 50, 100
+					</MeasurementPoints>
+				</Soc>
+				<ThermalState cache="True" class="ThermalState">
+					<InitialTemperature>25</InitialTemperature>
+				</ThermalState>				
+			</MyR2RC>
+		</CustomDefinitions>
+		<RootElement class="SerialTwoPort">
+			<Children count="1">
+				<Pack ref="MyR2RC"/>
+			</Children>
+		</RootElement>
+	</Configuration>
+</ISEA_R_OCV>

@@ -52,6 +52,12 @@ classdef CurrentCollector
             obj = CalcVolume(obj);
             obj = CalcWeight(obj);
         end
+        % overload compare operator
+        function logical = eq(A,B)
+            name_A           = GetProperty(A,'Name');
+            name_B           = arrayfun(@(x) convertStringsToChars(GetProperty(B(x),'Name')),(1:numel(B)),'UniformOutput', false);
+            logical          = strcmp(name_A,name_B);
+        end
     end
     %% Private Methods
     methods (Access = private)
@@ -61,6 +67,10 @@ classdef CurrentCollector
         end
         % calculation of the volume of the CurrentCollector
         function obj = CalcVolume(obj)
+            if isempty(obj.TabNumber)
+                obj.TabNumber = 1;
+                warning(['Tab number of the current collector ' convertStringsToChars(obj.Name) ' was not defined and therefore set to 1.']);
+            end
             obj.Volume = (prod(obj.Dimensions) + obj.TabNumber * prod(obj.TabDimensions)) * 1e-3; % in cm³
         end
         % calculation of the weight of the CurrentCollector

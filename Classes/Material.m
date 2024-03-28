@@ -3,16 +3,19 @@ classdef Material
     properties
         Name string                     % specific name (for saving in Database)
         Abbreviation string             % used in plots etc.
-        ChemFormula string
+        ChemFormula string				% written chemical formula
         MolarMass double                % in g/mol
         Density double                  % in g/cm³
         ElectricalConductivity double   % in S*m/m² = S/m
+        ThermalConductivity double      % in W/(m*K) = W*m/(m*K)
+        ThermalCapacity double          % in J/(kg*K)
         MeltingPoint double             % in °C
         BoilingPoint double             % in °C
         AddInfo struct                  % any additional info that has to be added to material
         Source string                   % literature source, measurements, etc.
         Confidential string             % 'Yes' or 'No'
     end
+
     %% Methods
     methods
         % constructor
@@ -66,3 +69,4 @@ classdef Material
         end
     end
 end
+

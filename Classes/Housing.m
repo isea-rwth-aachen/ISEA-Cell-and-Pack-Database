@@ -177,5 +177,11 @@ classdef Housing
             end
             obj.ListOfSubstances = ListOfSubstances_temp;
         end
+		% overload compare operator
+		function logical = eq(A,B) 
+           name_A           = GetProperty(A,'Name');
+           name_B           = arrayfun(@(x) convertStringsToChars(GetProperty(B(x),'Name')),(1:numel(B)),'UniformOutput', false);
+           logical          = strcmp(name_A,name_B);
+        end
     end
 end

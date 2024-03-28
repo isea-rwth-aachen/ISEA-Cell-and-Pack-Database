@@ -18,4 +18,3 @@ classdef Binder < Material
         end
     end
 end
-

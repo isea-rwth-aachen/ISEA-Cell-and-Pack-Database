@@ -49,4 +49,3 @@ classdef ConductiveSalt < Material
         end
     end
 end
-

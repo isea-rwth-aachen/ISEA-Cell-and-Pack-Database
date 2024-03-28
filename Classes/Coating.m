@@ -18,25 +18,43 @@ classdef Coating
         GravCapacity double                     % in mAh/g
         ElectricalConductivity double           % in S*m/m² = S/m
 
+		ThermalConductivity double  			% in W/(m*K) = W*m/(m²*K)                   
+        ThermalCapacity double 					% in J/(kg*K)      
+
         AddInfo struct                          % any additional info that has to be added to coating
         Source string                           % literature source, measurements, etc.
         Confidential string                     % 'Yes' or 'No'
+		
+		ArrheniusConductivity Arrhenius
     end
     %% Methods
     methods
         % constructor
-        function obj = Coating(Name, ActiveMaterial, WeightFractionActiveMaterial, ConductiveAdditive, WeightFractionConductiveAdditive, Binder, WeightFractionBinder)
-            obj.Name = Name;
-            obj.ActiveMaterial = ActiveMaterial;
-            obj.WeightFractionActiveMaterial = WeightFractionActiveMaterial;
-            obj.ConductiveAdditive = ConductiveAdditive;
-            obj.WeightFractionConductiveAdditive = WeightFractionConductiveAdditive;
-            obj.Binder = Binder;
-            obj.WeightFractionBinder = WeightFractionBinder;
+        function obj = Coating(Name, ActiveMaterial, WeightFractionActiveMaterial, ConductiveAdditive, WeightFractionConductiveAdditive, Binder, WeightFractionBinder,ArrheniusConductivity)
+            %MATERIAL Construct an instance of this class
+            %   Detailed explanation goes here
+            obj.Name                                = Name;
+            obj.ActiveMaterial                      = ActiveMaterial;
+            obj.WeightFractionActiveMaterial        = WeightFractionActiveMaterial;
+            obj.ConductiveAdditive                  = ConductiveAdditive;
+            obj.WeightFractionConductiveAdditive    = WeightFractionConductiveAdditive;
+            obj.Binder                              = Binder;
+            obj.WeightFractionBinder                = WeightFractionBinder;            
+            
             obj = CalcMolarMass(obj);
             obj = CalcDensity(obj);
             obj = CalcCapacity(obj);
             obj = CalcElectricalConductivity(obj);
+            obj = CalcThermalConductivity(obj);
+            obj = CalcThermalCapacity(obj);
+                        
+            if exist('ArrheniusConductivity', 'var') && ~isempty(ArrheniusConductivity) && isa(ArrheniusConductivity,'Arrhenius')
+                obj.ArrheniusConductivity          = ArrheniusConductivity;
+            elseif exist('ArrheniusConductivity', 'var') && isnumeric(ArrheniusConductivity)
+                obj.ArrheniusConductivity          = Arrhenius(['Conductivity_ ' convertCharsToStrings(obj.Name)],ArrheniusConductivity,'Scalar');
+            else
+                obj.ArrheniusConductivity          = Arrhenius(['Conductivity_ ' convertCharsToStrings(obj.Name)],obj.ElectricalConductivity,'Scalar');
+            end
         end
         % get function
         function output = GetProperty(obj, property)
@@ -61,6 +79,8 @@ classdef Coating
             obj = CalcDensity(obj);
             obj = CalcCapacity(obj);
             obj = CalcElectricalConductivity(obj);
+            obj = CalcThermalConductivity(obj);
+            obj = CalcThermalCapacity(obj);
         end
     end
     %% Private Methods
@@ -87,7 +107,7 @@ classdef Coating
         % calculate electrical conductivity of the Coating
         function obj = CalcElectricalConductivity(obj)
             CoordinationNumber = 12;
-            %% calculation via recursive function including binder conductivity
+            % calculation via recursive function including binder conductivity
             VolumeFractionTempSum = obj.WeightFractionActiveMaterial / obj.ActiveMaterial.Density...
                 + obj.WeightFractionConductiveAdditive / obj.ConductiveAdditive.Density...
                 + obj.WeightFractionBinder / obj.Binder.Density;
@@ -97,6 +117,19 @@ classdef Coating
             obj.VolumeFractions = [obj.VolumeFractionActiveMaterial, obj.VolumeFractionConductiveAdditive, obj.VolumeFractionBinder];
             EffectiveProperties = [obj.ActiveMaterial.ElectricalConductivity, obj.ConductiveAdditive.ElectricalConductivity, obj.Binder.ElectricalConductivity];
             obj.ElectricalConductivity = FcnRecursiveEffectiveMediumTheory(EffectiveProperties, obj.VolumeFractions, CoordinationNumber);
+        end
+		% calculate thermal conductivity of the Coating
+		function obj = CalcThermalConductivity(obj)
+            CoordinationNumber = 12;
+            % calculation via recursive function including binder conductivity
+            EffectiveProperties = [obj.ActiveMaterial.ThermalConductivity, obj.ConductiveAdditive.ThermalConductivity, obj.Binder.ThermalConductivity];
+            obj.ThermalConductivity = FcnRecursiveEffectiveMediumTheory(EffectiveProperties, obj.VolumeFractions, CoordinationNumber);
+        end
+		% calculate thermal capacity of the Coating
+		function obj = CalcThermalCapacity(obj)
+            obj.ThermalCapacity = obj.ActiveMaterial.ThermalCapacity * obj.WeightFractionActiveMaterial ...
+                                    + obj.ConductiveAdditive.ThermalCapacity * obj.WeightFractionConductiveAdditive ...
+                                    + obj.Binder.ThermalCapacity * obj.WeightFractionBinder;
         end
     end
 
@@ -163,6 +196,12 @@ classdef Coating
             zlabel('conductivity in S/m')
             legend('AM vs CA', 'AM vs Binder', 'VolumeFractionAM')
             % end second figure
+        end
+		% overload compare operator
+		function logical = eq(A,B) 
+           name_A           = GetProperty(A,'Name');
+           name_B           = arrayfun(@(x) convertStringsToChars(GetProperty(B(x),'Name')),(1:numel(B)),'UniformOutput', false);
+           logical          = strcmp(name_A,name_B);
         end
     end
 end

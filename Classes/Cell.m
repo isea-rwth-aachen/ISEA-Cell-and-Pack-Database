@@ -1,5 +1,7 @@
-classdef Cell
-
+classdef Cell < matlab.mixin.Copyable
+% This file represent the defintion of a battery cell as object. It is
+% build from a housing and a electrode stack. It can be created with
+% respect to different creation modes.
     properties
         Name string
         ElectrodeStack ElectrodeStack
@@ -32,6 +34,8 @@ classdef Cell
         VolPowerDensityIdealLoadResistance double   % in W/l
         Type string                                 % options: 'pouch', 'cylindrical', 'prismatic'
 
+		CreationMode string
+
         EstimatedElectrodeStackDimensions double                % in mm
         DiscrepancyDimensionsElectrodeStackAndHousing double    % in mm
 
@@ -61,6 +65,8 @@ classdef Cell
 
             if ~exist('CreationMode', 'var') %adapt stack dimensions to fit into Housing
                 CreationMode = "std";
+            else
+                obj.CreationMode = CreationMode;
             end
 
             if CreationMode == "std"
@@ -122,7 +128,19 @@ classdef Cell
             obj.Type = obj.Housing.Type;
             obj.Verts = obj.Housing.Verts;
             obj.Faces = obj.Housing.Faces;
-
+            if ~isprop(obj,'CreationMode') %adapt stack dimensions to fit into Housing
+                obj.CreationMode = "std";
+            end
+			if obj.CreationMode == "std"
+                obj.CalcNrOfWindingsOrLayers;
+            elseif obj.CreationMode == "FitStackToHousing"
+                obj = FitStackToHousing(obj);
+            elseif obj.CreationMode == "FitCellToCapacity"                    
+                obj = FitStackToHousing(obj);
+                obj = FitCellToCapacity(obj, TargetCapacity);
+            else
+                obj.CreationMode = "std";
+            end
             obj.Capacity = obj.ElectrodeStack.Capacity;
             obj.OpenCircuitVoltage = obj.ElectrodeStack.OpenCircuitVoltage;
             obj.OpenCircuitVoltageCha = obj.ElectrodeStack.OpenCircuitVoltageCha;
@@ -138,7 +156,11 @@ classdef Cell
             obj = CalcWeight(obj);
             obj = CalcEnergyDensity(obj);
             obj = CalcPowerDensity(obj);
-            obj = CompareElectrodeStackAndHousingDimensions(obj);
+            try
+                obj = CompareElectrodeStackAndHousingDimensions(obj);
+            catch
+                warning(['The stack dimension can not fit to the housing dimension of the cell: ' convertStringsToChars(obj.Name)]);
+            end
             obj = CalcListOfElements(obj);
             obj = CalcListOfSubstances(obj);
             obj = CalcListOfComponents(obj);
@@ -149,6 +171,14 @@ classdef Cell
         end
         % fit the stack dimensions to the housing
         function obj = FitStackToHousing(obj)
+			if isempty(obj.ElectrodeStack.Cathode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith) || isempty(obj.ElectrodeStack.Anode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith)
+                electrodes      = {'Cathode' 'Anode'};
+                id_cathode      = isempty(obj.ElectrodeStack.Cathode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith);
+                id_anode        = isempty(obj.ElectrodeStack.Anode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith);
+                error_message   = ['No relative increase in volume due to lithiation was reported for the ' strjoin(electrodes([id_cathode id_anode]), ' and '),...
+                                    '. The stack can therefore not be adapted to the case.'];
+                throw(MException('Cell:FitStackToHousing',error_message));
+            end
             AnodeMaxThickness = obj.ElectrodeStack.Anode.CurrentCollector.Dimensions(3) + (obj.ElectrodeStack.Anode.CoatingDimensions(1, 3)+obj.ElectrodeStack.Anode.CoatingDimensions(2, 3))...
                 *(1+obj.ElectrodeStack.Anode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith*obj.ElectrodeStack.Anode.Coating.ActiveMaterial.CommonOccupancyRange(2));
             AnodeMinThickness = obj.ElectrodeStack.Anode.CurrentCollector.Dimensions(3) + (obj.ElectrodeStack.Anode.CoatingDimensions(1, 3)+obj.ElectrodeStack.Anode.CoatingDimensions(2, 3))...
@@ -157,7 +187,7 @@ classdef Cell
                 *(1+obj.ElectrodeStack.Cathode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith*obj.ElectrodeStack.Cathode.Coating.ActiveMaterial.CommonOccupancyRange(2));
             CathodeMinThickness = obj.ElectrodeStack.Cathode.CurrentCollector.Dimensions(3) + (obj.ElectrodeStack.Cathode.CoatingDimensions(1, 3)+obj.ElectrodeStack.Cathode.CoatingDimensions(2, 3))...
                 *(1+obj.ElectrodeStack.Cathode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith*obj.ElectrodeStack.Cathode.Coating.ActiveMaterial.CommonOccupancyRange(1));
-
+            
             if (AnodeMaxThickness+CathodeMinThickness)>(CathodeMaxThickness+AnodeMinThickness)
                 AnodeThickness = AnodeMaxThickness;
                 CathodeThickness = CathodeMinThickness;
@@ -225,7 +255,9 @@ classdef Cell
                 obj.ElectrodeStack.NrOfWindingsOrLayers = NumberOfLayers;
 
             elseif strcmp(obj.Housing.Type, 'prismatic')
-
+				if isempty(obj.ElectrodeStack.OrientationOfWindingAxis)
+                    obj.ElectrodeStack.OrientationOfWindingAxis     = 'TD';
+                end
                 if strcmp(obj.ElectrodeStack.OrientationOfWindingAxis, 'TD')
                     ElectrodeStackWidth = obj.Housing.AvailableStackDimensions(1);
                     ElectrodeStackHeight = obj.Housing.AvailableStackDimensions(2);
@@ -233,7 +265,9 @@ classdef Cell
                     ElectrodeStackWidth = obj.Housing.AvailableStackDimensions(2);
                     ElectrodeStackHeight = obj.Housing.AvailableStackDimensions(1);
                 end
-
+                if ~(~isempty(obj.ElectrodeStack.PrismaticWindingStyle) && ~strcmpi(obj.ElectrodeStack.PrismaticWindingStyle,""))
+                    obj.ElectrodeStack.PrismaticWindingStyle        = 'STD';
+                end
                 NumJellyRolls = 5*obj.Housing.AvailableStackDimensions(3)/ElectrodeStackWidth;
                 NumJellyRolls = ceil(NumJellyRolls);
                 obj.ElectrodeStack.NrOfJellyRolls = NumJellyRolls;
@@ -329,7 +363,7 @@ classdef Cell
                 obj.ElectrodeStack.Anode.CurrentCollector.TabNumber=0;
                 obj.ElectrodeStack.Cathode.CurrentCollector.TabNumber=0;
             end
-
+			% refresh calculation of subordinated objects
             obj.ElectrodeStack.Anode.CurrentCollector=obj.ElectrodeStack.Anode.CurrentCollector.RefreshCalc();
             obj.ElectrodeStack.Cathode.CurrentCollector=obj.ElectrodeStack.Cathode.CurrentCollector.RefreshCalc();
             obj.ElectrodeStack.Anode=obj.ElectrodeStack.Anode.RefreshCalc();
@@ -337,7 +371,7 @@ classdef Cell
             obj.ElectrodeStack.Separator=obj.ElectrodeStack.Separator.RefreshCalc();
             obj.ElectrodeStack=obj.ElectrodeStack.RefreshCalc();
         end
-        %calculate dimensions to fit the cell to a target capacity
+        % calculate dimensions to fit the cell to a target capacity
         function obj = FitCellToCapacity(obj, TargetCapacity)
             AnodeMaxThickness = obj.ElectrodeStack.Anode.CurrentCollector.Dimensions(3) + (obj.ElectrodeStack.Anode.CoatingDimensions(1, 3)+obj.ElectrodeStack.Anode.CoatingDimensions(2, 3))...
                 *(1+obj.ElectrodeStack.Anode.Coating.ActiveMaterial.RelVolumeIncreaseOnLith*obj.ElectrodeStack.Anode.Coating.ActiveMaterial.CommonOccupancyRange(2));
@@ -503,18 +537,18 @@ classdef Cell
                 obj.Housing=obj.Housing.RefreshCalc();
             end
         end
-        %calculation of the energy denisity
+        % calculation of the energy denisity
         function obj = CalcEnergyDensity(obj)
             obj.Energy = obj.NominalVoltage * obj.Capacity;
             obj.EnergyCha = obj.NominalVoltageCha * obj.Capacity;
             obj.GravEnergyDensity = obj.Energy / obj.Weight * 1e3;
             obj.VolEnergyDensity = obj.Energy / obj.Volume * 1e3;
         end
-        %calculation of the internal resistance normalized capacity
+        % calculation of the internal resistance normalized capacity
         function obj = CalcInternalResistanceNormalizedCapacity(obj)
             obj.InternalResistanceNormalizedCapacity = obj.InternalResistance * obj.Capacity;
         end
-        %calculation of the power density
+        % calculation of the power density
         function obj = CalcPowerDensity(obj)
             SpecificConstHeat = 10; % in W/100g - constant losses per 100g of electrode stack mass;
             ConstHeatGen = SpecificConstHeat * obj.ElectrodeStack.Weight / 100;
@@ -787,6 +821,59 @@ classdef Cell
 
             % add housing
             obj.ListOfComponents = [obj.ListOfComponents; {'Housing', obj.Housing.Weight}];
+        end
+		% overload compare operator
+		function logical = eq(A,B) 
+           name_A           = GetProperty(A,'Name');
+           name_B           = arrayfun(@(x) convertStringsToChars(GetProperty(B(x),'Name')),(1:numel(B)),'UniformOutput', false);
+           logical          = strcmp(name_A,name_B);
+        end
+		% function to change parameters
+		function obj = ChangeParameter(obj,parameter_path,new_value,variation_id,flag_refresh)
+            parameter       = strsplit(parameter_path,'.');
+            depth           = length(parameter);
+            if ~exist('flag_refresh','var')
+                flag_refresh    = false;
+            end
+            %check new value
+            type_value      = eval(['underlyingType(obj.' parameter_path ');']);
+            
+            if ~strcmp(underlyingType(new_value),type_value)
+                warning('The type of the parameter to change and the new value are not equal!');
+                return;
+            end
+            temp_para_path  = ['obj.' strjoin(parameter(1:end-1),'.')];
+            temp_obj        = SetProperty(eval(temp_para_path),parameter{end},new_value);
+            
+            if ~isempty(variation_id) && ~contains(GetProperty(temp_obj,'Name'),'_ID')
+                temp_obj        = SetProperty(temp_obj,'Name', strjoin([temp_obj.Name, variation_id],'_')); 
+            end
+            if flag_refresh
+                    temp_obj            = RefreshCalc(temp_obj);
+            end
+            for i = depth - 1 : -1 : 2 
+                temp_para_path      = ['obj.' strjoin(parameter(1:i-1),'.')];
+                temp_obj            = SetProperty(eval(temp_para_path),parameter{i},temp_obj);
+                if ~isempty(variation_id) && ~contains(GetProperty(temp_obj,'Name'),'_ID')
+                    temp_obj            = SetProperty(temp_obj,'Name', strjoin([temp_obj.Name, variation_id],'_')); 
+                end
+                if flag_refresh
+                    temp_obj            = RefreshCalc(temp_obj);
+                end
+            end
+            if strcmp(underlyingType(temp_obj),'ElectrodeStack') || strcmp(underlyingType(temp_obj),'Housing')
+                obj             = SetProperty(obj,parameter{1},temp_obj);
+                
+                if ~isempty(variation_id) && ~contains(GetProperty(obj,'Name'),'_ID')
+                    obj             = SetProperty(obj,'Name',strjoin([obj.Name, variation_id],'_'));
+                end
+            else
+                warning('Parameter change cell: Something went wrong!');
+                return;
+            end
+            if flag_refresh
+                    obj            = RefreshCalc(obj);
+            end
         end
     end
 end

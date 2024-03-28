@@ -39,6 +39,10 @@ classdef Solvent < Material
                 error([property,' is not a Property of class Solvent']);
             end
         end
+        % refresh calculations
+        function obj = RefreshCalc(obj)
+            obj = CalcWeightFractions(obj);
+        end
     end
     %% Private Methods
     methods (Access = private)
@@ -51,4 +55,3 @@ classdef Solvent < Material
         end
     end
 end
-
