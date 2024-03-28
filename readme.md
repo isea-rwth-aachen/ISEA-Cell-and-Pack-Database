@@ -23,7 +23,7 @@ Please submit all bugs and suggestions as an issue in the GIT with detailed expl
 ## Required Software:
 
 + MATLAB
-
++ Fitting algorithm easyFit published by Jean-Luc Dellis (https://de.mathworks.com/matlabcentral/fileexchange/10625-easyfit-x-y-varargin)
 
 ## Featured Projects
 
